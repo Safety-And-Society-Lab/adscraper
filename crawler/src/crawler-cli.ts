@@ -30,12 +30,12 @@ const optionsDefinitions: commandLineUsage.OptionDefinition[] = [
     description: 'Name of this crawl (optional).',
     group: 'main',
   },
-  // {
-  //   name: 'crawl_id',
-  //   type: Number,
-  //   description: 'If resuming a previous crawl, the id of the previous crawl (Optional).',
-  //   group: 'main'
-  // },
+  {
+    name: 'crawl_id',
+    type: Number,
+    description: 'If resuming a previous crawl, the id of the previous crawl (Optional).',
+    group: 'main'
+  },
   {
     name: 'job_id',
     alias: 'j',
