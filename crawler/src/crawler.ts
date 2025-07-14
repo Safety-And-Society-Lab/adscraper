@@ -16,6 +16,8 @@ import DbClient, { WebRequest } from './util/db.js';
 import { InputError, NonRetryableError } from './util/errors.js';
 import * as log from './util/log.js';
 import { createAsyncTimeout, sleep } from './util/timeout.js';
+import { detectAndBypassAgeGate } from './age-gate.js'; // use `.js` if you're running compiled code via node
+
 
 sourceMapSupport.install();
 
@@ -389,7 +391,8 @@ export async function crawl(flags: CrawlerFlags, pgConf: ClientConfig, checkpoin
               }
 
               for (let i = 0; i < FLAGS.crawlOptions.findAndCrawlPageWithAds; i++) {
-                const urlWithAds = await subpageExplorer.findHealthRelatedPagesWithAds(seedPage);
+                //const urlWithAds = await subpageExplorer.findHealthRelatedPagesWithAds(seedPage);
+                const urlWithAds = await subpageExplorer.findPageWithAds(seedPage);
                 if (urlWithAds) {
                   let adsPage = await BROWSER.newPage();
                   await loadAndHandlePage(urlWithAds, adsPage, {
@@ -549,6 +552,27 @@ async function loadAndHandlePage(url: string, page: Page, metadata: LoadPageMeta
     await page.goto(url, { timeout: globalThis.PAGE_NAVIGATION_TIMEOUT });
     await sleep(PAGE_SLEEP_TIME);
     log.info(`${url}: Page finished loading`);
+    //TODO - insert code for age gates 
+
+    // Isolated Age Gate Bypass
+    let ageGateResult = { status: 'not_checked', notes: '' };
+    try {
+      ageGateResult = await detectAndBypassAgeGate(page);
+      log.info(`${url}: Age gate status: ${ageGateResult.status} — ${ageGateResult.notes}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      log.warning(`${url}: Age gate detection failed, continuing. Reason: ${msg}`);
+    }
+
+    // Early exit if restricted
+    if (ageGateResult.status === 'restricted') {
+      await db.updatePage(pageId, {
+        timestamp: new Date(),
+        url: page.url(),
+        error: ageGateResult.notes
+      });
+      return pageId;
+    }
 
     // Try to remove all cookie banners that may block content on the page
     await removeCookieBanners(page);
@@ -648,7 +672,9 @@ async function scrollDownPage(page: Page) {
 export async function launchBrowser(flags: CrawlerFlags) {
   log.info('Launching browser...');
   puppeteerExtra.default.use(StealthPlugin())
+  //let chromeArgs: string[] = ['--disable-dev-shm-usage'];
   let chromeArgs: string[] = ['--disable-dev-shm-usage'];
+  
   if (flags.chromeOptions.proxyServer) {
     chromeArgs.push(`--proxy-server=${flags.chromeOptions.proxyServer}`);
   }
@@ -656,9 +682,11 @@ export async function launchBrowser(flags: CrawlerFlags) {
     args: chromeArgs,
     defaultViewport: VIEWPORT,
     headless: flags.chromeOptions.headless,
+    acceptInsecureCerts: true,
     handleSIGINT: false,
     userDataDir: flags.chromeOptions.profileDir,
-    executablePath: flags.chromeOptions.executablePath
+    //executablePath: flags.chromeOptions.executablePath
+    executablePath: '/usr/bin/chromium-browser'
   });
   const version = await browser.version();
   log.info('Running ' + version);
