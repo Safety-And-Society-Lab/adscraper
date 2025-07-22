@@ -21,6 +21,8 @@ import { detectAndBypassAgeGate } from './age-gate.js'; // use `.js` if you're r
 
 sourceMapSupport.install();
 
+const BATCH_SIZE = 10 //added for closing tabs
+
 export interface CrawlerFlags {
   jobId?: number,
   crawlId?: number,
@@ -293,6 +295,7 @@ export async function crawl(flags: CrawlerFlags, pgConf: ClientConfig, checkpoin
     let _crawlLoop = (async () => {
 
       let lastCheckpointTime = Date.now();
+      let pagesSinceRestart = 0; //closing tab logic
       // Main loop through crawl list
       for (let i = crawlListStartingIndex; i < crawlList.length; i++) {
         if (!BROWSER.connected) {
@@ -441,6 +444,21 @@ export async function crawl(flags: CrawlerFlags, pgConf: ClientConfig, checkpoin
             log.strError('Caught exception while closing tab');
             throw e;
           }
+          //close tab logic - restart browser after every 10 pages
+          pagesSinceRestart++;
+          if (pagesSinceRestart >= BATCH_SIZE) {
+            log.info(`Restarting browser after ${pagesSinceRestart} pages`);
+            try {
+              await BROWSER.close();
+            } catch (err) {
+              log.warning(`Error closing browser: ${err instanceof Error ? err.message : String(err)}`);
+            }
+            BROWSER = await launchBrowser(FLAGS);
+            pagesSinceRestart = 0;
+          }
+
+          //close tab logic - restart browser after every 10 pages 
+
         }
       }
       await db.postgres.query('UPDATE crawl SET completed=TRUE, completed_time=$1 WHERE id=$2', [new Date(), CRAWL_ID]);
@@ -636,7 +654,7 @@ async function loadAndHandlePage(url: string, page: Page, metadata: LoadPageMeta
       await db.updatePage(pageId, { error: (e as string) });
     }
     throw e;
-  }
+  } 
 }
 
 async function scrollDownPage(page: Page) {

@@ -321,7 +321,7 @@ if (options.pg_conf_file && fs.existsSync(options.pg_conf_file)) {
   try {
     await crawler.crawl({
       jobId: options.job_id,
-      // crawlId: options.crawl_id,
+      crawlId: options.crawl_id,
       crawlName: options.name,
       resumeIfAble: options.resume_if_able,
       outputDir: options.output_dir,
