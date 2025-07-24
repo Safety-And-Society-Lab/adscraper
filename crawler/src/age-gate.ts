@@ -1,4 +1,5 @@
 import { Page } from 'puppeteer';
+import * as log from './util/log.js';
 
 const commonAgeGateSelectors = [
   '#guest-warning-accept',
@@ -27,22 +28,34 @@ const restrictionKeywords = [
 
 export async function detectAndBypassAgeGate(page: Page): Promise<{ status: string; notes: string }> {
   try {
-    let clicked = false;
+    // First, try to find and click common age gate selectors
+    try {
+      let selectorResult = await Promise.any(commonAgeGateSelectors.map(async selector => {
+        let handle = await page.waitForSelector(selector, { timeout: 2000 });
+        if (!handle) {
+          throw new Error('Element not found');
+        }
+        return {
+          handle: handle,
+          selector: selector
+        };
+      }));
 
-    // Try known selectors with longer timeout
-    for (const selector of commonAgeGateSelectors) {
-      try {
-        await page.waitForSelector(selector, { timeout: 2000 });
-        await page.click(selector);
-        clicked = true;
-        return { status: 'age_gate_bypassed', notes: `Clicked selector: ${selector}` };
-      } catch {
-        // Ignore and try next selector
+      if (selectorResult) {
+        await selectorResult.handle.click();
+        return { status: 'age_gate_bypassed', notes: `Clicked selector: ${selectorResult.selector}` };
+      }
+    } catch (e: any) {
+      // If no common selectors found, continue to fallback methods
+      if (e instanceof AggregateError) {
+        log.info(`No common age gate selectors found, trying fallback methods`);
+      } else {
+        throw e;  // Re-throw if the error is about something else
       }
     }
 
     // Fallback: keyword-based button or link text match
-    clicked = await page.evaluate((keywords) => {
+    let clicked = await page.evaluate((keywords) => {
       const elements = [...document.querySelectorAll('button, a')] as HTMLElement[];
       const target = elements.find(el => {
         const text = el.innerText?.toLowerCase();
