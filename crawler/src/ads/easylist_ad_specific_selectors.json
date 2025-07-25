@@ -14340,6 +14340,11 @@
   "hollywoodunlocked.com": [
     ".code-block"
   ],
+  "hotcelebshome.com": [
+    "#custom_html-4",
+    ".bcpsttl_name_listing",
+    ".widget_custom_html"
+  ],
   "ifoodreal.com": [
     ".code-block"
   ],
@@ -23474,6 +23479,10 @@
   "nltimes.nl": [
     "div[class^=\"r89-\"]"
   ],
+  "geekchamp.com": [
+    "div[class^=\"rk-\"]",
+    "div[id^=\"rk-\"]"
+  ],
   "semafor.com": [
     "div[class^=\"styles_ad\"]"
   ],
@@ -24885,12 +24894,6 @@
   "yavli.com": [
     "HTML"
   ],
-  "": [
-    ".ad-fallback",
-    ".ad.reform-top",
-    ".reform-top-container",
-    ".section-subheader > .section-hotel-prices-header"
-  ],
   "amazon.*": [
     "#nav-swmslot",
     "#sc-rec-bottom",
@@ -25943,11 +25946,6 @@
   ],
   "dpfantasy.org": [
     "#custom_html-4"
-  ],
-  "hotcelebshome.com": [
-    "#custom_html-4",
-    ".bcpsttl_name_listing",
-    ".widget_custom_html"
   ],
   "hentai7.top": [
     "#custom_html-6"

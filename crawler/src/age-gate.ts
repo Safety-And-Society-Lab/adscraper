@@ -23,52 +23,66 @@ const restrictionKeywords = [
   'restricted access',
   'not available in your location',
   'you are not allowed to access this content',
-  'your region'
+  'your region',
+  'at least 18'
 ];
 
 export async function detectAndBypassAgeGate(page: Page): Promise<{ status: string; notes: string }> {
   try {
     // First, try to find and click common age gate selectors
-    try {
-      let selectorResult = await Promise.any(commonAgeGateSelectors.map(async selector => {
-        let handle = await page.waitForSelector(selector, { timeout: 2000 });
-        if (!handle) {
-          throw new Error('Element not found');
+    const selectorResult = await page.evaluate((selectors) => {
+      for (const selector of selectors) {
+        const elements = document.querySelectorAll(selector);
+        for (const element of elements) {
+          if (!(element instanceof HTMLElement)) {
+            continue;
+          }
+          if (!element.checkVisibility()) {
+            continue;
+          }
+          console.log(`Found age gate using selector: ${selector}`);
+          element.click();
+          return { status: 'age_gate_bypassed', selector };
         }
-        return {
-          handle: handle,
-          selector: selector
-        };
-      }));
+      }
+      return null;
+    }, commonAgeGateSelectors);
 
-      if (selectorResult) {
-        await selectorResult.handle.click();
-        return { status: 'age_gate_bypassed', notes: `Clicked selector: ${selectorResult.selector}` };
-      }
-    } catch (e: any) {
-      // If no common selectors found, continue to fallback methods
-      if (e instanceof AggregateError) {
-        log.info(`No common age gate selectors found, trying fallback methods`);
-      } else {
-        throw e;  // Re-throw if the error is about something else
-      }
+    if (selectorResult) {
+      log.verbose(`Bypassed age gate using selector: ${selectorResult.selector}`);
+      return { status: 'age_gate_bypassed', notes: `Clicked selector: ${selectorResult.selector}` };
     }
+    log.verbose('No common age gate selectors found, trying text matches.');
+
 
     // Fallback: keyword-based button or link text match
-    let clicked = await page.evaluate((keywords) => {
-      const elements = [...document.querySelectorAll('button, a')] as HTMLElement[];
-      const target = elements.find(el => {
-        const text = el.innerText?.toLowerCase();
-        return text && keywords.some(k => text.includes(k));
+    let clickedElement = await page.evaluate((keywords) => {
+      const elements = [...document.querySelectorAll('button, a, [class*=btn], [class*=button]')] as HTMLElement[];
+
+      const target = elements
+         // Filter to visible elements
+        .filter(element => element.checkVisibility())
+        // Find element that matches a keyword
+        .find(el => {
+          const text = el.innerText?.toLowerCase();
+          if (!text) return false;
+          return keywords.some(keyword => {
+            // Replace any special keyword characters with regex escape sequences
+            const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // Do a regex match to ensure matches are done on whole words (word boundaries)
+            const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+            return regex.test(text);
+          });
       });
       if (target) {
         target.click();
-        return true;
+        return target.innerText;
       }
-      return false;
+      return null;
     }, fallbackTextMatches);
 
-    if (clicked) {
+    if (clickedElement) {
+      log.verbose(`Clicked fallback element by text match: "${clickedElement}"`);
       return { status: 'age_gate_bypassed', notes: 'Clicked fallback element by text match' };
     }
 

@@ -19,12 +19,13 @@ export async function identifyAdsInDOM(page: Page) {
     const regex = new RegExp(key.replace(/\./g, '\\.').replace(/\*/g, '.*'));
     return regex.test(domain);
   });
+
   // Merge the specific selectors with the general selectors
   if (domainKey.length > 0) {
     const specificSelectors = specificAdSelectors[domainKey[0] as keyof typeof specificAdSelectors];
     if (specificSelectors && Array.isArray(specificSelectors)) {
-      selectors.push(...specificSelectors);
       log.verbose(`Found ${specificSelectors.length} specific ad selectors for domain: ${domain}`);
+      selectors.push(...specificSelectors);
     }
   }
 
