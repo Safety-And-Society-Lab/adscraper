@@ -457,7 +457,7 @@ export async function crawl(flags: CrawlerFlags, pgConf: ClientConfig, checkpoin
             pagesSinceRestart = 0;
           }
 
-          //close tab logic - restart browser after every 10 pages 
+          //close tab logic - restart browser after every 10 pages
 
         }
       }
@@ -570,7 +570,7 @@ async function loadAndHandlePage(url: string, page: Page, metadata: LoadPageMeta
     await page.goto(url, { timeout: globalThis.PAGE_NAVIGATION_TIMEOUT });
     await sleep(PAGE_SLEEP_TIME);
     log.info(`${url}: Page finished loading`);
-    //TODO - insert code for age gates 
+    //TODO - insert code for age gates
 
     // Isolated Age Gate Bypass
     let ageGateResult = { status: 'not_checked', notes: '' };
@@ -654,7 +654,7 @@ async function loadAndHandlePage(url: string, page: Page, metadata: LoadPageMeta
       await db.updatePage(pageId, { error: (e as string) });
     }
     throw e;
-  } 
+  }
 }
 
 async function scrollDownPage(page: Page) {
@@ -692,7 +692,7 @@ export async function launchBrowser(flags: CrawlerFlags) {
   puppeteerExtra.default.use(StealthPlugin())
   //let chromeArgs: string[] = ['--disable-dev-shm-usage'];
   let chromeArgs: string[] = ['--disable-dev-shm-usage'];
-  
+
   if (flags.chromeOptions.proxyServer) {
     chromeArgs.push(`--proxy-server=${flags.chromeOptions.proxyServer}`);
   }
@@ -703,8 +703,8 @@ export async function launchBrowser(flags: CrawlerFlags) {
     acceptInsecureCerts: true,
     handleSIGINT: false,
     userDataDir: flags.chromeOptions.profileDir,
-    //executablePath: flags.chromeOptions.executablePath
-    executablePath: '/usr/bin/chromium-browser'
+    executablePath: flags.chromeOptions.executablePath
+    // executablePath: '/usr/bin/chromium-browser'
   });
   const version = await browser.version();
   log.info('Running ' + version);

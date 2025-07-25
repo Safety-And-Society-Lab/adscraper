@@ -1,5 +1,7 @@
 import { ElementHandle, JSHandle, Page } from 'puppeteer';
 import adSelectors from './easylist_ad_selectors.json' with { type: "json" };
+import specificAdSelectors from './easylist_ad_specific_selectors.json' with { type: "json" };
+import * as log from '../util/log.js';
 
 /**
  * Detects ads in the page using EasyList's CSS selectors, and returns an
@@ -8,6 +10,24 @@ import adSelectors from './easylist_ad_selectors.json' with { type: "json" };
  * inside each other.
  */
 export async function identifyAdsInDOM(page: Page) {
+  let selectors = Array.from(adSelectors);
+
+  // Look up specific selectors for the current domain
+  const domain = new URL(page.url()).hostname.replace(/^www\./, '');
+  // Identify keys matching the current domain
+  const domainKey = Object.keys(specificAdSelectors).filter(key => {
+    const regex = new RegExp(key.replace(/\./g, '\\.').replace(/\*/g, '.*'));
+    return regex.test(domain);
+  });
+  // Merge the specific selectors with the general selectors
+  if (domainKey.length > 0) {
+    const specificSelectors = specificAdSelectors[domainKey[0] as keyof typeof specificAdSelectors];
+    if (specificSelectors && Array.isArray(specificSelectors)) {
+      selectors.push(...specificSelectors);
+      log.verbose(`Found ${specificSelectors.length} specific ad selectors for domain: ${domain}`);
+    }
+  }
+
   const ads: JSHandle<Element[]> =
     await page.evaluateHandle((selectors: string[]) => {
       try {
@@ -45,7 +65,7 @@ export async function identifyAdsInDOM(page: Page) {
       } catch (e) {
         throw e;
       }
-    }, adSelectors);
+    }, selectors);
 
   const numAds = await ads.evaluate((ads) => ads.length);
   const adHandles = new Set<ElementHandle>();
